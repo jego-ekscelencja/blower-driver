@@ -1,133 +1,175 @@
-# blower-driver
+# Blower Driver
 
-STM32 PWM blower controller with offset save to Flash memory.
-
----
-
-## Description
-
-This project implements a PWM blower driver using the STM32F401 microcontroller.  
-It allows control of blower speed in four predefined steps (gears) with the ability  
-to adjust the PWM duty cycle of each gear and store offsets in the MCU's internal Flash memory.
-
-All control signals and selectors are **active low**.
+PWM blower driver based on STM32F401CCU6 (Black Pill).  
+Supports gear selection, PWM offset adjustment, and persistent settings storage in Flash memory.
 
 ---
 
-## Bill of Materials (BOM)
+## Hardware Overview
 
-| Component               | Specification or Part Number      |
-|--------------------------|-----------------------------------|
-| Microcontroller          | STM32F401CCU6                     |
-| Power MOSFET             | IRLR8726 (Logic-Level N-MOSFET)   |
-| Freewheeling Diode       | Schottky SR360                    |
-| LEDs                     | Standard low-power LED            |
-| Push Buttons             | For UP, DOWN, and SAVE            |
-| Select Switches          | Mechanical switches (active low)  |
-| Resistors                | Pull-up or pull-down as required  |
+- **MCU:** STM32F401CCU6 (Black Pill)
+- **MOSFET:** IRLR8726 (logic-level N-MOSFET)
+- **Flyback Diode:** STPS2L60U (Schottky, 2A / 60V)
+- Controlled device: blower motor
+- PWM frequency selectable via hardware pins
 
 ---
 
-## PWM Frequency Selection
+## Block Diagram
 
-PWM frequency is selected once during power-up by reading specific GPIO pins.  
-A **LOW** state on a pin activates the corresponding frequency:
-
-| Frequency     | Pin                       |
-|---------------|---------------------------|
-| 500 Hz        | GPIOA Pin 7 (F_Set_1)     |
-| 1 kHz         | GPIOB Pin 0 (F_Set_2)     |
-| 2 kHz         | GPIOB Pin 1 (F_Set_3)     |
-| Test Mode (100 Hz) | None of the above active |
-
-In test mode, all frequencies are disabled and the PWM runs at 100 Hz.
-
----
-
-## Gear Selection
-
-Blower speed is divided into 4 gears, each selected by a dedicated GPIO input:  
-
-| Gear   | Selector Pin       |
-|--------|--------------------|
-| Gear 1 | GPIOA Pin 3        |
-| Gear 2 | GPIOA Pin 4        |
-| Gear 3 | GPIOA Pin 5        |
-| Gear 4 | GPIOA Pin 6        |
-
-- **Active low**: A low state on a pin selects the corresponding gear.
-- If no gear is active, the PWM output is turned OFF.
+```
++---------------------+
+| STM32F401CCU6       |
+| (Black Pill)        |
++-----------+---------+
+            |
+      TIM2 CH1 (PA0)
+            |
+      +-----+------+
+      |            |
+   IRLR8726       LEDs
+     Gate
+```
 
 ---
 
-## Default Duty Cycles
+## Inputs
 
-Each gear has an initial default duty cycle:
+| Signal         | Pin            | Description                          |
+|----------------|----------------|--------------------------------------|
+| Selector Switch| PA3, PA4, PA5, PA6 | Gear selection (1..4 or none = 0) |
+| SP_Up Button   | PB2            | Increase PWM offset for active gear  |
+| SP_Dn Button   | PB10           | Decrease PWM offset for active gear  |
+| Save Button    | PA2            | Saves offsets to Flash memory        |
+| Freq Select 1  | PA7            | LOW → 500 Hz                         |
+| Freq Select 2  | PB0            | LOW → 1 kHz                          |
+| Freq Select 3  | PB1            | LOW → 2 kHz                          |
 
-- **Gear 1:** 25%
-- **Gear 2:** 50%
-- **Gear 3:** 75%
-- **Gear 4:** 100%
+**Note:** All frequency select pins HIGH → 100 Hz test mode.
+
+---
+
+## Outputs
+
+| Signal          | Pin        | Description                          |
+|-----------------|------------|--------------------------------------|
+| PWM Output      | PA0 (TIM2_CH1) | PWM signal driving blower gate |
+| Status LED      | PC13       | Blinking LED indicating active gear  |
+| Save LED        | PA1        | Lit when offsets differ from saved   |
+
+---
+
+## Gear Selection and PWM Duty
+
+The gear selector switch sets the active gear:
+
+| Selector Position | Gear | Duty Cycle (before offset) |
+|-------------------|------|----------------------------|
+| PA3 LOW           | 1    | 25%                        |
+| PA4 LOW           | 2    | 50%                        |
+| PA5 LOW           | 3    | 75%                        |
+| PA6 LOW           | 4    | 100%                       |
+| All HIGH          | None | PWM off, blower disabled   |
+
+- **Gear “none”** corresponds to selector position 0 (no active gear).
 
 ---
 
 ## Offset Adjustment
 
-Offsets allow fine-tuning of the PWM duty cycle for each gear by ±20%.  
+- **Offset range:** -20% … +20%
+- Use SP_Up or SP_Dn buttons to increase or decrease offset for the currently selected gear.
+- PWM duty = base duty + offset
+- Duty cycle is clamped to the range 0…100%.
 
-- Increase offset with **SP_Up** button (GPIOB Pin 2, active low).
-- Decrease offset with **SP_Dn** button (GPIOB Pin 10, active low).
-- Each press adjusts the duty by ±1%.
-- Offsets are constrained to the range **-20% to +20%**.
+Example:
 
-Example:  
-If Gear 2 has a default duty of 50% and the offset is +7%, the resulting duty will be 57%.
+- Gear 2 (base 50%)
+- Offset +10 → PWM duty = 60%
 
 ---
 
 ## Saving Offsets
 
-To save offsets permanently:
-
-- Press the **SAVE** button (GPIOA Pin 2, active low).
-- When any offset differs from the saved value, the **SAVE LED** (GPIOA Pin 1) lights up.
-- After pressing SAVE, offsets are written into internal Flash memory at address `0x08020000`.
+- Press Save Button (PA2) to write all offsets to Flash.
+- Saved offsets are automatically loaded on power-up.
+- When current offsets differ from saved values, the Save LED (PA1) lights up.
 
 ---
 
-## PWM Output Control
+## PWM Frequencies
 
-- The PWM output is driven by TIM2 Channel 1.
-- When no gear is active, PWM stops and the output pin is switched to GPIO LOW.
-- When a gear is active:
-  - PWM is started.
-  - Duty cycle is recalculated considering the offset.
+PWM frequency is selected at startup via hardware pins:
 
----
-
-## LED Blinking
-
-Status LED connected to GPIOC Pin 13 indicates the current gear:
-
-- Gear 1 → 1 Hz (1000 ms blink interval)
-- Gear 2 → ~3 Hz (333 ms blink interval)
-- Gear 3 → 5 Hz (200 ms blink interval)
-- Gear 4 → 10 Hz (100 ms blink interval)
-- No gear → 0.5 Hz (2000 ms blink interval)
+| Pin States                    | Frequency |
+|-------------------------------|-----------|
+| PA7 LOW                       | 500 Hz    |
+| PB0 LOW                       | 1 kHz     |
+| PB1 LOW                       | 2 kHz     |
+| PA7 HIGH, PB0 HIGH, PB1 HIGH  | 100 Hz    |
 
 ---
 
-## Flash Memory Layout
+## LEDs
 
-Offsets are saved in Flash as a structure:
+- **Status LED (PC13)**  
+  - Blinks at different frequencies depending on active gear:
+    - Gear 1 → 1 Hz
+    - Gear 2 → ~3 Hz
+    - Gear 3 → 5 Hz
+    - Gear 4 → 10 Hz
+    - No gear → 0.5 Hz
 
-```c
-typedef struct
-{
-    uint16_t signature;      // 0x55AA
-    int8_t Offset_for1;
-    int8_t Offset_for2;
-    int8_t Offset_for3;
-    int8_t Offset_for4;
-    uint16_t reserved;
-} OffsetsFlash_t;
+- **Save LED (PA1)**  
+  - Lit when current offsets differ from saved offsets in Flash.
+  - Turns off after saving.
+
+---
+
+## Bill of Materials (BOM)
+
+| Part                | Type                         | Comment                  |
+|---------------------|------------------------------|--------------------------|
+| MCU                 | STM32F401CCU6                | Black Pill board         |
+| MOSFET              | IRLR8726                     | Logic-level N-MOSFET     |
+| Flyback Diode       | STPS2L60U                    | Schottky, 2A / 60V       |
+| Blower motor        | —                            | Your choice              |
+| LEDs                | 2 pcs                        | Status + Save indication |
+| Buttons             | 3 pcs                        | SP_Up, SP_Dn, Save       |
+
+---
+
+## How It Works
+
+1. On power-up, frequency selection pins determine PWM frequency.
+2. Offsets are loaded from Flash if valid.
+3. Selector switch chooses the active gear.
+4. PWM duty is calculated as:
+    ```
+    PWM duty = base_duty + offset
+    ```
+5. Status LED blinks based on gear.
+6. Save Button writes current offsets to Flash.
+
+---
+
+### Example Use Case
+
+- Selector in Gear 3 → base duty 75%
+- SP_Dn pressed → offset decremented from 0% → -5%
+- PWM duty = 70%
+- Save Button pressed → offsets saved to Flash.
+
+---
+
+## Repository
+
+- Code is stored in this repository.
+- Default branch: `master`.
+
+---
+
+## License
+
+GPL-3.0 License
+
