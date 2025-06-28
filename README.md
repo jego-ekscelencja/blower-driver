@@ -15,23 +15,53 @@ Supports gear selection, PWM offset adjustment, and persistent settings storage 
 
 ---
 
-## Block Diagram
 
-```
-+---------------------+
-| STM32F401CCU6       |
-| (Black Pill)        |
-+-----------+---------+
-            |
-      TIM2 CH1 (PA0)
-            |
-      +-----+------+
-      |            |
-   IRLR8726       LEDs
-     Gate
-```
 
----
+## Software Logic Flow
+
+- **Startup:**
+  - Initialize HAL
+  - Load offsets from Flash memory
+  - Read frequency selection pins to set PWM frequency
+
+- **Main Loop:**
+  - **Read Selector Switch (PA3..PA6):**
+    - If any gear is active:
+      - Compute duty = Base duty + Offset
+      - Clamp duty to 0…100%
+      - Update TIM2 PWM signal on PA0
+    - Else (no gear selected → selector = 0):
+      - Stop PWM
+      - Configure PA0 as GPIO output LOW
+
+  - **Read Buttons:**
+    - SP_Up → increment current gear offset (max +20%)
+    - SP_Dn → decrement current gear offset (min -20%)
+
+  - **Clamp Offsets:**
+    - Ensure offsets stay within ±20%
+
+  - **Check if Offsets Changed:**
+    - If changed → turn on Save LED (PA1)
+
+  - **Check Save Button (PA2):**
+    - If pressed:
+      - Save offsets to Flash
+      - Turn off Save LED
+
+  - **Status LED (PC13):**
+    - Blink rate depends on selected gear:
+      - Gear 1 → 1 Hz
+      - Gear 2 → ~3 Hz
+      - Gear 3 → 5 Hz
+      - Gear 4 → 10 Hz
+      - No gear → 0.5 Hz
+
+- **Loop Continuously**
+
+
+
+
 
 ## Inputs
 
