@@ -1,5 +1,27 @@
 # Blower Driver
 
+
+## Project Background
+
+This project was developed specifically for automotive applications where a blower motor is normally controlled via a multi-position resistor network (gear selector) that steps down the motor voltage to achieve different fan speeds.
+
+In my own car, the factory blower resistor burned out. Unfortunately, replacement parts were either unavailable or disproportionately expensive. Faced with this problem right before leaving on a summer holiday trip, I built this project under time pressure to restore air conditioning operation for the journey.
+
+Instead of the original resistor network, this driver uses PWM to regulate the blower speed. It reads the state of a selector switch (connected to input pins) and generates the appropriate PWM signal to drive a low-side logic-level N-MOSFET, which switches the blower motor.
+
+This solution may also be useful for others facing similar issues in vehicles where:
+
+- blower speeds are selected via hardware resistors
+- replacement parts are expensive or hard to find
+- PWM speed control offers more precise and reliable operation
+
+**Important Note:**
+
+- The circuit needs to be connected to an ignition-switched power source, so that it powers down with the car. However, this power does not need to carry the full blower motor current, since the entire high-current switching is handled by the low-side MOSFET driver.
+
+
+
+
 PWM blower driver based on STM32F401CCU6 (Black Pill).  
 Supports gear selection, PWM offset adjustment, and persistent settings storage in Flash memory.
 
