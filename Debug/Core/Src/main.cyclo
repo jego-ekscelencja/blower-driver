@@ -1,0 +1,7 @@
+../Core/Src/main.c:96:5:main	59
+../Core/Src/main.c:377:6:SystemClock_Config	3
+../Core/Src/main.c:415:6:SaveOffsetsToFlash	4
+../Core/Src/main.c:458:17:LoadOffsetsFromFlash	2
+../Core/Src/main.c:472:9:CheckOffsetsChanged	5
+../Core/Src/main.c:483:6:HandleSaveButton	6
+../Core/Src/main.c:529:6:Error_Handler	1
