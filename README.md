@@ -30,8 +30,8 @@ Supports gear selection, PWM offset adjustment, and persistent settings storage 
 ## Hardware Overview
 
 - **MCU:** STM32F401CCU6 (Black Pill)
-- **MOSFET:** IRLR8726 (logic-level N-MOSFET)
-- **Flyback Diode:** STPS2L60U (Schottky, 2A / 60V)
+- **MOSFET:** IRLB3034 N-FET 40V 195A 375W (logic-level N-MOSFET)
+- **Flyback Diode:** schottky Diode MBR3045 45V/30A
 - Controlled device: blower motor
 - PWM frequency selectable via hardware pins
 
@@ -183,8 +183,8 @@ PWM frequency is selected at startup via hardware pins:
 | Part                | Type                         | Comment                  |
 |---------------------|------------------------------|--------------------------|
 | MCU                 | STM32F401CCU6                | Black Pill board         |
-| MOSFET              | IRLR8726                     | Logic-level N-MOSFET     |
-| Flyback Diode       | STPS2L60U                    | Schottky, 2A / 60V       |
+| MOSFET              | IRLR83034                    | Logic-level N-MOSFET     |
+| Flyback Diode       | MBR3045                      | Schottky, 30A / 45V      |
 | Blower motor        | —                            | Your choice              |
 | LEDs                | 2 pcs                        | Status + Save indication |
 | Buttons             | 3 pcs                        | SP_Up, SP_Dn, Save       |
