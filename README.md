@@ -183,7 +183,7 @@ PWM frequency is selected at startup via hardware pins:
 | Part                | Type                         | Comment                  |
 |---------------------|------------------------------|--------------------------|
 | MCU                 | STM32F401CCU6                | Black Pill board         |
-| MOSFET              | IRLR83034                    | Logic-level N-MOSFET     |
+| MOSFET              | IRLB83034                    | Logic-level N-MOSFET     |
 | Flyback Diode       | MBR3045                      | Schottky, 30A / 45V      |
 | Blower motor        | —                            | Your choice              |
 | LEDs                | 2 pcs                        | Status + Save indication |
